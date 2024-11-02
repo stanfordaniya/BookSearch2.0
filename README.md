@@ -1,6 +1,5 @@
 
 ## Book Search 2.0 with Google Book API by Aniya Stanford
-
 ## Description
 This project is a virtual library web application that enables users to search for books, view details, and browse through multiple pages of search results. The application integrates the Google Books API to dynamically fetch and display book information, offering a seamless and user-friendly experience.
 
