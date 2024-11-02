@@ -7,7 +7,9 @@ This project is a virtual library web application that enables users to search f
 ## Table of Contents
 - [Installation](#installation)
 - [Usage](#usage)
+- [Requirements](#requirements)
 - [Screenshots](#screenshots)
+
 
 ## Installation
 1. Clone the repository:
@@ -31,6 +33,13 @@ The Book Search 2.0 application provides an intuitive interface for users to sea
    - Each page displays a new set of books, allowing for easy browsing of all search results.
 
 This app is designed to be user-friendly, enabling users to explore an array of books with just a few clicks. Enjoy discovering new reads and diving into book details seamlessly!
+
+## Requirements
+### Changes required for personal usage:
+### Client ID: Replace "YOUR_CLIENT_ID" for Google Sign-In.
+### Access Token: Replace "YOUR_ACCESS_TOKEN_HERE" to access the user’s private Google Books library.
+### API Key: Replace "YOUR_BOOKAPIKEY_HERE" to enable the public Google Books search functionality.
+
 
 ## Screenshots
 ### Example One:
