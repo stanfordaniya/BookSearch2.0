@@ -179,9 +179,10 @@
         <h1>Book Search</h1>
 
         <!-- Google Sign-In Button -->
+        <!-- Replace YOUR_CLIENT_ID with your actual Client ID -->
         <div class="signin-container">
             <div id="g_id_onload"
-                data-client_id="873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com"
+                data-client_id="YOUR_CLIENT_ID"  
                 data-callback="handleCredentialResponse"
                 data-auto_prompt="false"
                 data-scope="https://www.googleapis.com/auth/books">
@@ -287,10 +288,11 @@
             searchBooks(query, 1);
         });
 
+            // Modify key=YOUR_BOOKAPIKEY_HERE` in url with your Book API key 
         function searchBooks(query, page) {
             const startIndex = (page - 1) * booksPerPage;
             $.ajax({
-                url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${booksPerPage}&key=AIzaSyC7LacympO_n-WrND9RVNj88UXOmmpZUq8`,
+                url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${booksPerPage}&key=YOUR_BOOKAPIKEY_HERE`, 
                 method: 'GET',
                 success: function(response) {
                     displaySearchResults(response.items || []);
