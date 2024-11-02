@@ -248,19 +248,19 @@
             }
 
             $.ajax({
-                url: "https://www.googleapis.com/books/v1/mylibrary/bookshelves/7/volumes",
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                },
-                success: function(data) {
-                    displayLibraryBooks(data.items || []);
-                },
-                error: function() {
-                    $('#bookshelfList').html('<p>Error fetching library books. Please ensure permissions are granted.</p>');
-                }
-            });
-        }
+            url: "https://www.googleapis.com/books/v1/mylibrary/bookshelves/7/volumes",
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer YOUR_ACCESS_TOKEN_HERE' // <-- Replace YOUR_ACCESS_TOKEN_HERE with the actual token, you can grab this using Google Developer OAuth 2.0 Playground
+            },
+            success: function(data) {
+                displayLibraryBooks(data.items || []);
+            },
+            error: function() {
+                $('#bookshelfList').html('<p>Error fetching library books. Please ensure permissions are granted.</p>');
+            }
+                });
+                    }
 
         function displayLibraryBooks(books) {
             let bookshelfList = $('#bookshelfList');
