@@ -46,4 +46,4 @@ This app is designed to be user-friendly, enabling users to explore an array of 
 <img src="images/ADVPROJ4.png" alt="Example Four" width="800">
 
 ### Example Five:
-<img src="images/ADVPROJ5.png" alt="Example Five" width="800"> ```
+<img src="images/ADVPROJ5.png" alt="Example Five" width="800">
