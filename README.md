@@ -36,9 +36,9 @@ This app is designed to be user-friendly, enabling users to explore an array of 
 
 ## Requirements
 ### Changes required for personal usage:
-### Client ID: Replace "YOUR_CLIENT_ID" for Google Sign-In.
-### Access Token: Replace "YOUR_ACCESS_TOKEN_HERE" to access the user’s private Google Books library.
-### API Key: Replace "YOUR_BOOKAPIKEY_HERE" to enable the public Google Books search functionality.
+- Client ID: Replace "YOUR_CLIENT_ID" for Google Sign-In.
+- Access Token: Replace "YOUR_ACCESS_TOKEN_HERE" to access the user’s private Google Books library.
+- API Key: Replace "YOUR_BOOKAPIKEY_HERE" to enable the public Google Books search functionality.
 
 
 ## Screenshots
