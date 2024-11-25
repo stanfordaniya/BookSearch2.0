@@ -369,20 +369,23 @@ document.addEventListener("DOMContentLoaded", function () {
         if (userInfo) {
             localStorage.setItem("access_token", accessToken);
             fetchUserLibrary(accessToken);
-            updateUserInfo(userInfo); // Update user UI
+            updateUserInfo(userInfo); // Show user info
         } else {
             console.error("Invalid access token received.");
             localStorage.removeItem("access_token");
+            alert("Sign-in failed. Please try again.");
         }
     } else if (storedAccessToken) {
         console.log("Access token found in local storage.");
         const userInfo = parseJwt(storedAccessToken);
         if (userInfo) {
             fetchUserLibrary(storedAccessToken);
-            updateUserInfo(userInfo); // Update user UI
+            updateUserInfo(userInfo); // Show user info
         } else {
             console.error("Stored access token is invalid.");
             localStorage.removeItem("access_token");
+            alert("Session expired. Please sign in again.");
+            location.reload();
         }
     } else if (code) {
         console.log("Authorization code received:", code);
@@ -391,26 +394,27 @@ document.addEventListener("DOMContentLoaded", function () {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: code }),
         })
-            .then((response) => response.json())
-            .then((data) => {
+            .then(response => response.json())
+            .then(data => {
                 if (data.access_token) {
                     localStorage.setItem("access_token", data.access_token);
                     const userInfo = parseJwt(data.access_token);
                     if (userInfo) {
                         fetchUserLibrary(data.access_token);
-                        updateUserInfo(userInfo); // Update user UI
+                        updateUserInfo(userInfo); // Show user info
                     }
                 } else {
                     console.error("Token exchange failed:", data);
                 }
             })
-            .catch((error) => {
+            .catch(error => {
                 console.error("Error during token exchange:", error);
             });
     } else {
         console.log("No access token or authorization code found. User may need to sign in.");
     }
 });
+
 
 // Helper to update the user info UI
 function updateUserInfo(userInfo) {
@@ -433,7 +437,7 @@ function fetchUserLibrary(token = localStorage.getItem("access_token")) {
     }
 
     $.ajax({
-        url: `${backendBaseUrl}/api/books`,
+        url: `${backendBaseUrl}/api/books?query=all`, // Ensure required parameters are passed
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
         success: function (data) {
@@ -443,10 +447,10 @@ function fetchUserLibrary(token = localStorage.getItem("access_token")) {
         error: function (xhr, status, error) {
             console.error("Error fetching library books:", xhr.responseJSON || xhr.responseText);
             if (xhr.status === 400) {
-                console.error("Bad Request: Check token validity or API parameters.");
+                console.error("Bad Request: Check query parameters or token validity.");
             } else if (xhr.status === 401) {
                 console.error("Unauthorized: Token might be expired or invalid.");
-                localStorage.removeItem("access_token"); // Clear invalid token
+                localStorage.removeItem("access_token");
                 alert("Session expired. Please sign in again.");
                 location.reload();
             }
@@ -454,6 +458,7 @@ function fetchUserLibrary(token = localStorage.getItem("access_token")) {
         },
     });
 }
+
 
 
 
@@ -576,20 +581,24 @@ function fetchUserLibrary(token = localStorage.getItem("access_token")) {
 
         function parseJwt(token) {
     try {
+        if (!token || token.split('.').length < 3) {
+            throw new Error('Invalid token format.');
+        }
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(
             atob(base64)
                 .split('')
-                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
                 .join('')
         );
         return JSON.parse(jsonPayload);
     } catch (error) {
         console.error('Error parsing JWT:', error);
-        return null; // Return null if token is invalid
+        return null; // Return null for invalid tokens
     }
 }
+
 
 
         function signOut() {
