@@ -16,7 +16,7 @@ app.use(express.json());
 app.use((req, res, next) => {
     res.setHeader(
         "Content-Security-Policy",
-        "default-src 'self'; img-src 'self' data: https:; script-src 'self' https://accounts.google.com https://cdnjs.cloudflare.com"
+        "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; connect-src 'self' https://www.googleapis.com"
     );
     next();
 });
@@ -60,7 +60,7 @@ app.get("/api/books", async (req, res) => {
             params: {
                 q: query,
                 startIndex,
-                maxResults: 10, // Adjust as needed
+                maxResults: 10,
             },
             headers: { Authorization: `Bearer ${req.headers.authorization}` },
         });
@@ -69,6 +69,17 @@ app.get("/api/books", async (req, res) => {
         console.error("Error fetching books:", error.response?.data || error.message);
         res.status(500).json({ error: "Failed to fetch books" });
     }
+});
+
+// Catch-all route for unhandled requests
+app.use((req, res) => {
+    res.status(404).json({ error: "Route not found" });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: "Internal server error" });
 });
 
 // Start the server
