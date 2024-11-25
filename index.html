@@ -360,89 +360,62 @@
 document.addEventListener("DOMContentLoaded", function () {
     const urlParams = new URLSearchParams(window.location.search);
     const accessToken = urlParams.get("access_token");
-    const code = urlParams.get("code");
+    const authorizationCode = urlParams.get("code");
 
-    // Debugging URL parameters
-    console.log("Full URL:", window.location.href);
     console.log("Access Token:", accessToken);
-    console.log("Authorization Code:", code);
+    console.log("Authorization Code:", authorizationCode);
 
     if (accessToken) {
-        console.log("Access token found in URL.");
         localStorage.setItem("access_token", accessToken); // Store access token
-        fetchUserLibrary(accessToken); // Fetch library with token
-    } else if (code) {
-        console.log("Authorization code found in URL.");
-        // Exchange authorization code for access token
-        fetch(`${backendBaseUrl}/auth/token`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: code }),
-        })
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.access_token) {
-                    console.log("Access token received from exchange:", data.access_token);
-                    localStorage.setItem("access_token", data.access_token);
-                    fetchUserLibrary(data.access_token);
-                } else {
-                    console.error("Failed to exchange code for token:", data);
-                }
-            })
-            .catch((error) => {
-                console.error("Error during token exchange:", error);
-            });
+        fetchUserLibrary(accessToken);
+    } else if (authorizationCode) {
+        console.log("Authorization code found:", authorizationCode);
+        exchangeAuthorizationCodeForToken(authorizationCode); // Exchange code for token
     } else {
         console.log("No access token or authorization code found. User may need to sign in.");
     }
+
+    // Sign-in Button Handler
+    const signInButton = document.getElementById("signInButton");
+    signInButton.addEventListener("click", function () {
+        const redirectUri = "https://stanfordaniya.github.io/BookSearch2.0/";
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=profile email`;
+        window.location.href = authUrl; // Redirect to Google Sign-In
+    });
 });
 
-
-
-
-
-// Helper to update the user info UI
-function updateUserInfo(userInfo) {
-    document.getElementById("user-info").innerHTML = `
-        <h3>Welcome, ${userInfo.name}</h3>
-        <p>Email: ${userInfo.email}</p>
-        <img src="${userInfo.picture}" alt="Profile Picture" />
-        <br>
-        <button onclick="signOut()">Sign out</button>
-    `;
-    document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
+function exchangeAuthorizationCodeForToken(code) {
+    fetch("https://book-search-121e29a2ab08.herokuapp.com/auth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.access_token) {
+                localStorage.setItem("access_token", data.access_token);
+                console.log("Access Token received:", data.access_token);
+                fetchUserLibrary(data.access_token);
+            } else {
+                console.error("Token exchange failed:", data);
+            }
+        })
+        .catch((error) => console.error("Error exchanging authorization code:", error));
 }
 
-
-
-function fetchUserLibrary(token = localStorage.getItem("access_token")) {
-    if (!token) {
-        console.error("Access token is missing. Cannot fetch user library.");
-        return;
-    }
-
-    $.ajax({
-        url: `${backendBaseUrl}/api/books?query=all`, // Ensure required parameters are passed
+function fetchUserLibrary(token) {
+    fetch("https://book-search-121e29a2ab08.herokuapp.com/api/books", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
-        success: function (data) {
+    })
+        .then((response) => response.json())
+        .then((data) => {
             console.log("Library Books:", data);
             displayLibraryBooks(data.items || []);
-        },
-        error: function (xhr, status, error) {
-            console.error("Error fetching library books:", xhr.responseJSON || xhr.responseText);
-            if (xhr.status === 400) {
-                console.error("Bad Request: Check query parameters or token validity.");
-            } else if (xhr.status === 401) {
-                console.error("Unauthorized: Token might be expired or invalid.");
-                localStorage.removeItem("access_token");
-                alert("Session expired. Please sign in again.");
-                location.reload();
-            }
-            document.getElementById("bookshelfList").innerHTML = '<p>Error fetching library books.</p>';
-        },
-    });
+        })
+        .catch((error) => console.error("Error fetching library books:", error));
 }
+
 
 
 
