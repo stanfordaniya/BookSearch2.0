@@ -358,18 +358,22 @@
 
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Extract access_token or code from the URL
     const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get("access_token"); // Access token directly
-    const code = urlParams.get("code"); // Authorization code for token exchange
+    const accessToken = urlParams.get("access_token");
+    const code = urlParams.get("code");
+
+    // Debugging URL parameters
+    console.log("Full URL:", window.location.href);
+    console.log("Access Token:", accessToken);
+    console.log("Authorization Code:", code);
 
     if (accessToken) {
-        console.log("Access token received:", accessToken);
-        localStorage.setItem("access_token", accessToken); // Store for later use
-        fetchUserLibrary(accessToken); // Fetch the user's library
+        console.log("Access token found in URL.");
+        localStorage.setItem("access_token", accessToken); // Store access token
+        fetchUserLibrary(accessToken); // Fetch library with token
     } else if (code) {
-        console.log("Authorization code received:", code);
-        // Exchange code for access token
+        console.log("Authorization code found in URL.");
+        // Exchange authorization code for access token
         fetch(`${backendBaseUrl}/auth/token`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -378,11 +382,11 @@ document.addEventListener("DOMContentLoaded", function () {
             .then((response) => response.json())
             .then((data) => {
                 if (data.access_token) {
+                    console.log("Access token received from exchange:", data.access_token);
                     localStorage.setItem("access_token", data.access_token);
-                    console.log("Access Token:", data.access_token);
-                    fetchUserLibrary(data.access_token); // Fetch user library
+                    fetchUserLibrary(data.access_token);
                 } else {
-                    console.error("Token exchange failed:", data);
+                    console.error("Failed to exchange code for token:", data);
                 }
             })
             .catch((error) => {
@@ -392,6 +396,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("No access token or authorization code found. User may need to sign in.");
     }
 });
+
 
 
 
