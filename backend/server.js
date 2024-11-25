@@ -34,19 +34,34 @@ app.get("/auth/google", (req, res) => {
 });
 
 // Google OAuth callback route
-app.get("/auth/callback", (req, res) => {
+app.get("/auth/callback", async (req, res) => {
     const code = req.query.code;
 
     if (!code) {
         return res.status(400).json({ error: "Authorization code not found" });
     }
 
-    res.send(`
-        <h1>Authorization Code Received</h1>
-        <p>Code: ${code}</p>
-        <p>Use this code to exchange for an access token via the /auth/token route.</p>
-    `);
+    try {
+        // Exchange the authorization code for an access token
+        const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: process.env.REDIRECT_URI,
+            grant_type: "authorization_code",
+        });
+
+        const { access_token } = tokenResponse.data;
+
+        // Redirect back to the frontend with the access token
+        const frontendUrl = process.env.FRONTEND_URL || "https://stanfordaniya.github.io/BookSearch2.0/";
+        res.redirect(`${frontendUrl}?access_token=${access_token}`);
+    } catch (error) {
+        console.error("Error exchanging authorization code for token:", error.response?.data || error.message);
+        res.status(500).json({ error: "Failed to exchange authorization code" });
+    }
 });
+
 
 // Exchange authorization code for access token
 app.post("/auth/token", async (req, res) => {
@@ -68,16 +83,19 @@ app.post("/auth/token", async (req, res) => {
 
 // Proxy route to fetch books from Google Books API
 app.get("/api/books", async (req, res) => {
-    const { query, startIndex } = req.query;
+    const { query, startIndex = 0 } = req.query; // Default startIndex to 0 if not provided
+
+    if (!query) {
+        return res.status(400).json({ error: "Query parameter is required" });
+    }
 
     try {
         const response = await axios.get("https://www.googleapis.com/books/v1/volumes", {
             params: {
                 q: query,
-                startIndex,
-                maxResults: 10,
+                startIndex: Number(startIndex),
+                maxResults: 10, // Adjust as needed
             },
-            headers: { Authorization: `Bearer ${req.headers.authorization}` },
         });
         res.json(response.data);
     } catch (error) {
@@ -85,6 +103,7 @@ app.get("/api/books", async (req, res) => {
         res.status(500).json({ error: "Failed to fetch books" });
     }
 });
+
 
 // Catch-all route for unhandled requests
 app.use((req, res) => {

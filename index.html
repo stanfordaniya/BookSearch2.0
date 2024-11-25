@@ -330,117 +330,93 @@
     <script>
         
         let accessToken;
-        const booksPerPage = 10;
-        const backendBaseUrl = "https://book-search-121e29a2ab08.herokuapp.com";
+    const booksPerPage = 10;
+    const backendBaseUrl = "https://book-search-121e29a2ab08.herokuapp.com";
 
-         
-        // Google Sign-In handler
-        function handleCredentialResponse(response) {
-            const responsePayload = parseJwt(response.credential);
+    // Google Sign-In handler
+    function handleCredentialResponse(response) {
+        const responsePayload = parseJwt(response.credential);
 
-            document.getElementById('user-info').innerHTML = `
-                <h3>Welcome, ${responsePayload.name}</h3>
-                <p>Email: ${responsePayload.email}</p>
-                <img src="${responsePayload.picture}" alt="Profile Picture" />
-                <br>
-                <button onclick="signOut()">Sign out</button>
-            `;
+        document.getElementById('user-info').innerHTML = `
+            <h3>Welcome, ${responsePayload.name}</h3>
+            <p>Email: ${responsePayload.email}</p>
+            <img src="${responsePayload.picture}" alt="Profile Picture" />
+            <br>
+            <button onclick="signOut()">Sign out</button>
+        `;
 
-            accessToken = response.credential;
-            fetchUserLibrary();
+        accessToken = response.credential;
+        fetchUserLibrary();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Extract access_token from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const accessToken = urlParams.get("access_token"); // Get access_token if present
+        const code = urlParams.get("code"); // Get authorization code if present
+
+        if (accessToken) {
+            console.log("Access token received:", accessToken);
+            localStorage.setItem("access_token", accessToken); // Store the token
+            fetchUserLibrary(accessToken); // Fetch the user's library
+        } else if (code) {
+            console.log("Authorization code received:", code);
+            fetch(`${backendBaseUrl}/auth/token`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: code }), // Fixed line
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.access_token) {
+                        localStorage.setItem("access_token", data.access_token);
+                        console.log("Access Token:", data.access_token);
+                        fetchUserLibrary(data.access_token); // Fetch user library with token
+                    } else {
+                        console.error("Token exchange failed:", data);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error during token exchange:", error);
+                });
+        } else {
+            console.log("No access token or authorization code found. User may need to sign in.");
         }
-        // Add OAuth 2.0 Login Flow logic
-        document.addEventListener('DOMContentLoaded', function () {
-        // Attach click listener to sign-in button
+
+        // Sign-In Button Logic
         const signInButton = document.getElementById("signInButton");
         if (signInButton) {
-        signInButton.addEventListener("click", function () {
-
-            const redirectUri = "https://stanfordaniya.github.io/BookSearch2.0/";
-        const authUrl = `${backendBaseUrl}/auth/google?redirectUri=${encodeURIComponent(redirectUri)}`;
-        window.location.href = authUrl; // Redirect to backend OAuth handler
-         }); 
+            signInButton.addEventListener("click", function () {
+                const redirectUri = `${backendBaseUrl}/auth/callback`;
+                const authUrl = `${backendBaseUrl}/auth/google?redirectUri=${encodeURIComponent(redirectUri)}`;
+                window.location.href = authUrl; // Redirect to start OAuth flow
+            });
         } else {
-            console.error('Sign-In button not found!');
+            console.error("Sign-In button not found!");
         }
+    });
 
-        // Handle OAuth callback to exchange authorization code for an access token
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-
-        if (code) {
-    console.log("Authorization code received:", code);
-    fetch(`${backendBaseUrl}/auth/token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-    })
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.access_token) {
-                localStorage.setItem("access_token", data.access_token);
-                console.log("Access Token:", data.access_token);
-                fetchUserLibrary(data.access_token);
-            } else {
-                console.error("Token exchange failed:", data);
-            }
-        })
-        .catch((error) => {
-            console.error("Error during token exchange:", error);
-        });
+    function fetchUserLibrary(token = localStorage.getItem("access_token")) {
+    if (!token) {
+        console.error('Access token is missing. Cannot fetch user library.');
+        return;
     }
 
-});
-
-    function exchangeAuthorizationCodeForToken(code) {
-        const clientId = '873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com';
-        const clientSecret = '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'; // Keep this secure in production!
-        const redirectUri = 'https://stanfordaniya.github.io/BookSearch2.0/';
-        const tokenUrl = 'https://oauth2.googleapis.com/token';
-
-        $.ajax({
-            url: tokenUrl,
-            method: 'POST',
-            contentType: 'application/x-www-form-urlencoded',
-            data: {
-                code: code,
-                client_id: clientId,
-                client_secret: clientSecret,
-                redirect_uri: redirectUri,
-                grant_type: 'authorization_code'
-            },
-            success: function (response) {
-                console.log('Access Token:', response.access_token);
-                accessToken = response.access_token;
-                fetchUserLibrary(); // Fetch library books after receiving the token
-            },
-            error: function (xhr) {
-                console.error("Error fetching library books:", xhr.responseJSON || xhr.responseText);
-                $('#bookshelfList').html('<p>Error fetching library books. Please check your authentication or API permissions.</p>');
-            }
-        });
-    }
-
-    function fetchUserLibrary() {
-        if (!accessToken) {
-            console.error('Access token is missing.');
-            return;
+    $.ajax({
+        url: `${backendBaseUrl}/api/books`, // Adjust endpoint as needed
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` }, // Use token
+        success: function (data) {
+            console.log("Library Books:", data);
+            displayLibraryBooks(data.items || []);
+        },
+        error: function (xhr) {
+            console.error("Error fetching library books:", xhr.responseJSON || xhr.responseText);
+            document.getElementById("bookshelfList").innerHTML = '<p>Error fetching library books.</p>';
         }
+    });
+}
 
-        $.ajax({
-            url: "https://www.googleapis.com/books/v1/mylibrary/bookshelves/7/volumes",
-            method: "GET",
-            headers: { Authorization: `Bearer ${accessToken}` },
-            success: function (data) {
-                console.log("Library Books:", data);
-                displayLibraryBooks(data.items || []);
-            },
-            error: function (xhr) {
-                console.error("Error fetching library books:", xhr.responseJSON || xhr.responseText);
-                $('#bookshelfList').html('<p>Error fetching library books. Please ensure permissions are granted.</p>');
-            }
-        });
-    }
 
         function renderBooks(templateId, containerId, books = []) {
             const template = document.getElementById(templateId).innerHTML;
