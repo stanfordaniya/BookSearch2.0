@@ -127,22 +127,74 @@
         .grid-view .book-item {
             display: block;
         }
+        .grid-view .book-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px; /* Adds spacing between items */
+         }
 
-        .list-view .book-list {
-            display: block;
+        .grid-view .book-item {
+            display: block; /* Ensures each book-item is treated as a block in the grid */
         }
 
-        .list-view .book-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
+        /* List View Overrides */
+/* List View Overrides */
+.list-view .book-item {
+    display: flex; /* Horizontal alignment (image + text) */
+    align-items: flex-start; /* Align items at the top */
+    justify-content: flex-start; /* Align content to the start */
+    flex-wrap: wrap; /* Ensure content wraps for long text */
+    width: 100%; /* Full width for each item */
+    padding: 15px; /* Add spacing inside each item */
+    margin: 0; /* No margin between items */
+    border-bottom: 1px solid #ddd; /* Separator line between items */
+    background-color: #fff; /* Ensure consistent background */
+    box-shadow: none; /* Remove grid view shadow */
+}
 
-        .list-view .book-item img {
-            margin-right: 20px;
-            width: 100px;
-        }
+.list-view .book-item:last-child {
+    border-bottom: none; /* Remove bottom border for the last item */
+}
+
+.list-view .book-item img {
+    margin-right: 20px; /* Space between image and text */
+    width: 80px; /* Smaller image size for list view */
+    height: auto; /* Maintain aspect ratio */
+    flex-shrink: 0; /* Prevent image from shrinking */
+}
+
+.list-view .book-item div {
+    flex: 1; /* Allow text block to take remaining space */
+}
+
+.list-view .book-item p {
+    margin: 0;
+    color: #666; /* Subtle text for descriptions */
+    font-size: 0.9em; /* Smaller font for descriptions */
+    margin-top: 5px; /* Add some space below the title */
+    line-height: 1.4; /* Improve readability */
+}
+
+.list-view .book-item a {
+    font-size: 1.2em; /* Larger font for title */
+    font-weight: bold; /* Emphasize the title */
+    color: #333; /* Neutral text color */
+    text-decoration: none;
+    margin-bottom: 5px;
+    display: block; /* Ensure link spans the full width */
+}
+
+.list-view .book-item a:hover {
+    color: #2980b9; /* Hover effect for title */
+}
+
+.list-view .book-item p {
+    margin: 0;
+    color: #666; /* Subtle text for authors */
+    font-size: 1em; /* Standard font size */
+}
+
+
 
         /* Pagination */
         .pagination {
@@ -214,7 +266,6 @@
     </style>
 </head>
 <body>
-
     <div class="container">
         <h1>Book Search</h1>
 
@@ -262,19 +313,25 @@
 
     <!-- Mustache Template for Books -->
     <script id="book-template" type="x-tmpl-mustache">
+        {{#books}}
         <div class="book-item">
             <img src="{{image}}" alt="{{title}}">
             <div>
-                <a href="{{infoLink}}" target="_blank">{{title}}</a>
-                <p>{{authors}}</p>
+                <a href="#" class="book-title" data-id="{{id}}">{{title}}</a>
+                <p><strong>Authors:</strong> {{authors}}</p>
+                <p><strong>Description:</strong> {{description}}</p>
             </div>
         </div>
+        {{/books}}
+        {{^books}}
+        <p>No books found.</p>
+        {{/books}}
     </script>
 
     <!-- Include Google Identity Services, jQuery, and Mustache.js -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/4.2.0/mustache.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/3.0.0/mustache.min.js"></script>
 
     <script>
         let accessToken;
@@ -308,30 +365,92 @@
             });
         }
 
-        function renderBooks(templateId, containerId, books) {
-            const template = $(`#${templateId}`).html();
+        function renderBooks(templateId, containerId, books = []) {
+            const template = document.getElementById(templateId).innerHTML;
+
+            if (!books || books.length === 0) {
+                console.warn('No books to render.');
+                document.getElementById(containerId).innerHTML = '<p>No books to display.</p>';
+                return;
+            }
+
             const rendered = Mustache.render(template, { books });
-            $(`#${containerId}`).html(rendered);
+            document.getElementById(containerId).innerHTML = rendered;
         }
 
         function displaySearchResults(books) {
             const formattedBooks = books.map(book => ({
+                id: book.id,
                 image: book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/100x150',
-                title: book.volumeInfo.title,
+                title: book.volumeInfo.title || 'No Title Available',
                 authors: book.volumeInfo.authors?.join(', ') || 'Unknown Author',
-                infoLink: book.volumeInfo.infoLink
+                infoLink: book.volumeInfo.infoLink || '#',
+                description: book.volumeInfo.description?.substring(0, 200) + '...' || 'No description available.'
             }));
             renderBooks('book-template', 'bookList', formattedBooks);
         }
+ // Attach Event for Title Clicks
+ $(document).on('click', '.book-title', function (event) {
+        event.preventDefault();
+        const bookId = $(this).data('id');
+        displayBookDetails(bookId);
+    });
+    
+        function setupPagination(totalItems, query, currentPage) {
+    const totalPages = Math.ceil(totalItems / booksPerPage);
+    const paginationContainer = $('#pagination');
+    const maxButtons = 5; // Max number of visible buttons
+    const startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    const endPage = Math.min(totalPages, startPage + maxButtons - 1);
 
-        function displayLibraryBooks(books) {
-            const formattedBooks = books.map(book => ({
-                image: book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/100x150',
-                title: book.volumeInfo.title,
-                authors: book.volumeInfo.authors?.join(', ') || 'Unknown Author',
-                infoLink: book.volumeInfo.infoLink
-            }));
-            renderBooks('book-template', 'bookshelfList', formattedBooks);
+    paginationContainer.empty();
+
+    // Previous button
+    if (currentPage > 1) {
+        const prevButton = $('<button>&laquo;</button>');
+        prevButton.click(() => searchBooks(query, currentPage - 1));
+        paginationContainer.append(prevButton);
+    }
+
+    // Numbered buttons
+    for (let i = startPage; i <= endPage; i++) {
+        const button = $(`<button>${i}</button>`);
+        button.addClass(i === currentPage ? 'active' : '');
+        button.click(() => searchBooks(query, i));
+        paginationContainer.append(button);
+    }
+
+    // Next button
+    if (currentPage < totalPages) {
+        const nextButton = $('<button>&raquo;</button>');
+        nextButton.click(() => searchBooks(query, currentPage + 1));
+        paginationContainer.append(nextButton);
+    }
+
+    // Display current page information
+    paginationContainer.append(
+        `<p>Page ${currentPage} of ${totalPages} (${totalItems} total results)</p>`
+    );
+}
+
+
+        function searchBooks(query, page) {
+            const startIndex = (page - 1) * booksPerPage;
+            $.ajax({
+                url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${booksPerPage}`,
+                method: 'GET',
+                success: function (response) {
+                    if (response && response.items) {
+                        displaySearchResults(response.items);
+                        setupPagination(response.totalItems, query, page);
+                    } else {
+                        $('#bookList').html('<p>No results found.</p>');
+                    }
+                },
+                error: function () {
+                    $('#bookList').html('<p>Error fetching search results.</p>');
+                }
+            });
         }
 
         $('#searchButton').click(() => {
@@ -340,18 +459,28 @@
             searchBooks(query, 1);
         });
 
-        function searchBooks(query, page) {
-            const startIndex = (page - 1) * booksPerPage;
-            $.ajax({
-                url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${booksPerPage}&key=AIzaSyC7LacympO_n-WrND9RVNj88UXOmmpZUq8`,
-                method: 'GET',
-                success: response => displaySearchResults(response.items || []),
-                error: () => $('#bookList').html('<p>Error fetching search results.</p>')
-            });
-        }
-
         $('#gridViewButton').click(() => $('#bookList').removeClass('list-view').addClass('grid-view'));
         $('#listViewButton').click(() => $('#bookList').removeClass('grid-view').addClass('list-view'));
+
+        function displayBookDetails(bookId) {
+            $.ajax({
+                url: `https://www.googleapis.com/books/v1/volumes/${bookId}`,
+                method: 'GET',
+                success: function (book) {
+                    const volumeInfo = book.volumeInfo;
+                    $('#bookDetails').html(`
+                        <h2>${volumeInfo.title}</h2>
+                        <p><strong>Authors:</strong> ${volumeInfo.authors?.join(', ') || 'Unknown'}</p>
+                        <p><strong>Publisher:</strong> ${volumeInfo.publisher || 'Unknown'}</p>
+                        <p>${volumeInfo.description || 'No description available.'}</p>
+                        <img src="${volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/150'}" alt="${volumeInfo.title}">
+                    `);
+                },
+                error: function () {
+                    $('#bookDetails').html('<p>Error fetching book details. Please try again later.</p>');
+                }
+            });
+        }
 
         function parseJwt(token) {
             const base64Url = token.split('.')[1];
@@ -362,7 +491,7 @@
 
         function signOut() {
             accessToken = null;
-            document.getElementById('user-info').innerHTML = '<p>You have signed out.</p>';
+            $('#user-info').html('<p>You have signed out.</p>');
             $('#bookshelfList, #bookList, #pagination, #bookDetails').empty();
         }
     </script>
