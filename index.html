@@ -358,62 +358,42 @@
 
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Extract access_token or code from the URL
     const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get("access_token");
-    const code = urlParams.get("code");
-    const storedAccessToken = localStorage.getItem("access_token");
+    const accessToken = urlParams.get("access_token"); // Access token directly
+    const code = urlParams.get("code"); // Authorization code for token exchange
 
     if (accessToken) {
         console.log("Access token received:", accessToken);
-        const userInfo = parseJwt(accessToken);
-        if (userInfo) {
-            localStorage.setItem("access_token", accessToken);
-            fetchUserLibrary(accessToken);
-            updateUserInfo(userInfo); // Show user info
-        } else {
-            console.error("Invalid access token received.");
-            localStorage.removeItem("access_token");
-            alert("Sign-in failed. Please try again.");
-        }
-    } else if (storedAccessToken) {
-        console.log("Access token found in local storage.");
-        const userInfo = parseJwt(storedAccessToken);
-        if (userInfo) {
-            fetchUserLibrary(storedAccessToken);
-            updateUserInfo(userInfo); // Show user info
-        } else {
-            console.error("Stored access token is invalid.");
-            localStorage.removeItem("access_token");
-            alert("Session expired. Please sign in again.");
-            location.reload();
-        }
+        localStorage.setItem("access_token", accessToken); // Store for later use
+        fetchUserLibrary(accessToken); // Fetch the user's library
     } else if (code) {
         console.log("Authorization code received:", code);
+        // Exchange code for access token
         fetch(`${backendBaseUrl}/auth/token`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: code }),
         })
-            .then(response => response.json())
-            .then(data => {
+            .then((response) => response.json())
+            .then((data) => {
                 if (data.access_token) {
                     localStorage.setItem("access_token", data.access_token);
-                    const userInfo = parseJwt(data.access_token);
-                    if (userInfo) {
-                        fetchUserLibrary(data.access_token);
-                        updateUserInfo(userInfo); // Show user info
-                    }
+                    console.log("Access Token:", data.access_token);
+                    fetchUserLibrary(data.access_token); // Fetch user library
                 } else {
                     console.error("Token exchange failed:", data);
                 }
             })
-            .catch(error => {
+            .catch((error) => {
                 console.error("Error during token exchange:", error);
             });
     } else {
         console.log("No access token or authorization code found. User may need to sign in.");
     }
 });
+
+
 
 
 // Helper to update the user info UI
