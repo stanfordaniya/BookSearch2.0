@@ -66,6 +66,26 @@
             background-color: #2980b9;
         }
 
+        /* View Toggle Buttons */
+        .view-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .view-toggle button:hover {
+            background-color: #2980b9;
+        }
+
         /* Book List */
         .book-list {
             display: grid;
@@ -102,6 +122,26 @@
 
         .book-item a:hover {
             color: #2980b9;
+        }
+
+        .grid-view .book-item {
+            display: block;
+        }
+
+        .list-view .book-list {
+            display: block;
+        }
+
+        .list-view .book-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .list-view .book-item img {
+            margin-right: 20px;
+            width: 100px;
         }
 
         /* Pagination */
@@ -179,10 +219,9 @@
         <h1>Book Search</h1>
 
         <!-- Google Sign-In Button -->
-        <!-- Replace YOUR_CLIENT_ID with your actual Client ID -->
         <div class="signin-container">
             <div id="g_id_onload"
-                data-client_id="873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com"  
+                data-client_id="873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com"
                 data-callback="handleCredentialResponse"
                 data-auto_prompt="false"
                 data-scope="https://www.googleapis.com/auth/books">
@@ -199,180 +238,131 @@
             <button id="searchButton">Search</button>
         </div>
 
-        <!-- Book List for search results -->
-        <div class="book-list" id="bookList"></div>
+        <!-- View Toggle Buttons -->
+        <div class="view-toggle">
+            <button id="gridViewButton">Grid View</button>
+            <button id="listViewButton">List View</button>
+        </div>
 
-        <!-- Pagination for search results -->
+        <!-- Book List for search results -->
+        <div class="book-list grid-view" id="bookList"></div>
+
+        <!-- Pagination -->
         <div class="pagination" id="pagination"></div>
 
         <!-- Book Details -->
         <div class="book-details" id="bookDetails"></div>
 
-        <!-- Bookshelf (User's Library) -->
+        <!-- Bookshelf -->
         <div class="bookshelf">
             <h2>My Library</h2>
-            <div class="book-list" id="bookshelfList"></div>
+            <div class="book-list grid-view" id="bookshelfList"></div>
         </div>
     </div>
 
-    <!-- Include Google Identity Services and jQuery -->
+    <!-- Mustache Template for Books -->
+    <script id="book-template" type="x-tmpl-mustache">
+        <div class="book-item">
+            <img src="{{image}}" alt="{{title}}">
+            <div>
+                <a href="{{infoLink}}" target="_blank">{{title}}</a>
+                <p>{{authors}}</p>
+            </div>
+        </div>
+    </script>
+
+    <!-- Include Google Identity Services, jQuery, and Mustache.js -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/4.2.0/mustache.min.js"></script>
 
-    <!-- JavaScript Functions -->
     <script>
-        let accessToken; // Store access token globally
+        let accessToken;
         const booksPerPage = 10;
 
         // Google Sign-In handler
         function handleCredentialResponse(response) {
             const responsePayload = parseJwt(response.credential);
 
-            // Display user information
             document.getElementById('user-info').innerHTML = `
                 <h3>Welcome, ${responsePayload.name}</h3>
                 <p>Email: ${responsePayload.email}</p>
                 <img src="${responsePayload.picture}" alt="Profile Picture" />
-                <br><br>
                 <button onclick="signOut()">Sign out</button>
             `;
 
-            // Store access token
             accessToken = response.credential;
             fetchUserLibrary();
         }
 
         function fetchUserLibrary() {
-            if (!accessToken) {
-                console.error("No access token available");
-                return;
-            }
+            if (!accessToken) return;
 
             $.ajax({
-                url: "https://www.googleapis.com/books/v1/mylibrary/bookshelves",
+                url: "https://www.googleapis.com/books/v1/mylibrary/bookshelves/7/volumes",
                 method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                },
-                success: function(data) {
-                    console.log(data); // Inspect available bookshelves
-                },
-                error: function(error) {
-                    console.error("Error fetching bookshelves:", error);
-                }
-            });
-
-                    }
-
-        function displayLibraryBooks(books) {
-            let bookshelfList = $('#bookshelfList');
-            bookshelfList.empty();
-
-            books.forEach(book => {
-                let volumeInfo = book.volumeInfo;
-                bookshelfList.append(`
-                    <div class="book-item">
-                        <img src="${volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : 'https://via.placeholder.com/100x150'}" alt="${volumeInfo.title}">
-                        <a href="#" class="book-title" data-id="${book.id}">${volumeInfo.title}</a>
-                        <p>by ${volumeInfo.authors ? volumeInfo.authors.join(', ') : 'Unknown Author'}</p>
-                    </div>
-                `);
+                headers: { Authorization: `Bearer ${accessToken}` },
+                success: data => displayLibraryBooks(data.items || []),
+                error: () => $('#bookshelfList').html('<p>Error fetching library books.</p>')
             });
         }
 
-        $('#searchButton').click(function() {
-            const query = $('#searchInput').val().trim();
-            if (!query) {
-                alert('Please enter a search term.');
-                return;
-            }
-            searchBooks(query, 1);
-        });
-
-            // Modify "key=YOUR_BOOKAPIKEY_HERE` in url with your Book API key 
-        function searchBooks(query, page) {
-            const startIndex = (page - 1) * booksPerPage;
-            $.ajax({
-                url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${booksPerPage}&key=AIzaSyC7LacympO_n-WrND9RVNj88UXOmmpZUq8`, 
-                method: 'GET',
-                success: function(response) {
-                    displaySearchResults(response.items || []);
-                    setupPagination(response.totalItems, query);
-                },
-                error: function() {
-                    $('#bookList').html('<p>Error fetching search results. Please try again later.</p>');
-                }
-            });
+        function renderBooks(templateId, containerId, books) {
+            const template = $(`#${templateId}`).html();
+            const rendered = Mustache.render(template, { books });
+            $(`#${containerId}`).html(rendered);
         }
 
         function displaySearchResults(books) {
-            let bookList = $('#bookList');
-            bookList.empty();
-
-            books.forEach(book => {
-                let volumeInfo = book.volumeInfo;
-                bookList.append(`
-                    <div class="book-item">
-                        <img src="${volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : 'https://via.placeholder.com/100x150'}" alt="${volumeInfo.title}">
-                        <a href="#" class="book-title" data-id="${book.id}">${volumeInfo.title}</a>
-                        <p>by ${volumeInfo.authors ? volumeInfo.authors.join(', ') : 'Unknown Author'}</p>
-                    </div>
-                `);
-            });
-
-            // Attach click event handler for each book title link
-            $('.book-title').click(function(event) {
-                event.preventDefault(); // Prevents page from scrolling to the top
-                const bookId = $(this).data('id');
-                displayBookDetails(bookId);
-            });
+            const formattedBooks = books.map(book => ({
+                image: book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/100x150',
+                title: book.volumeInfo.title,
+                authors: book.volumeInfo.authors?.join(', ') || 'Unknown Author',
+                infoLink: book.volumeInfo.infoLink
+            }));
+            renderBooks('book-template', 'bookList', formattedBooks);
         }
 
-        function setupPagination(totalItems, query) {
-            const totalPages = Math.ceil(totalItems / booksPerPage);
-            $('#pagination').empty();
-
-            for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-                $('#pagination').append(`<button class="${i === 1 ? 'active' : ''}" onclick="searchBooks('${query}', ${i})">${i}</button>`);
-            }
+        function displayLibraryBooks(books) {
+            const formattedBooks = books.map(book => ({
+                image: book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/100x150',
+                title: book.volumeInfo.title,
+                authors: book.volumeInfo.authors?.join(', ') || 'Unknown Author',
+                infoLink: book.volumeInfo.infoLink
+            }));
+            renderBooks('book-template', 'bookshelfList', formattedBooks);
         }
 
-        function displayBookDetails(bookId) {
+        $('#searchButton').click(() => {
+            const query = $('#searchInput').val().trim();
+            if (!query) return alert('Please enter a search term.');
+            searchBooks(query, 1);
+        });
+
+        function searchBooks(query, page) {
+            const startIndex = (page - 1) * booksPerPage;
             $.ajax({
-                url: `https://www.googleapis.com/books/v1/volumes/${bookId}`,
+                url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${booksPerPage}&key=AIzaSyC7LacympO_n-WrND9RVNj88UXOmmpZUq8`,
                 method: 'GET',
-                success: function(book) {
-                    let volumeInfo = book.volumeInfo;
-                    $('#bookDetails').html(`
-                        <h2>${volumeInfo.title}</h2>
-                        <p><strong>Authors:</strong> ${volumeInfo.authors ? volumeInfo.authors.join(', ') : 'Unknown'}</p>
-                        <p><strong>Publisher:</strong> ${volumeInfo.publisher || 'Unknown'}</p>
-                        <p>${volumeInfo.description || 'No description available.'}</p>
-                        <img src="${volumeInfo.imageLinks ? volumeInfo.imageLinks.thumbnail : 'https://via.placeholder.com/150'}" alt="${volumeInfo.title}">
-                    `);
-                },
-                error: function() {
-                    $('#bookDetails').html('<p>Error fetching book details. Please try again later.</p>');
-                }
+                success: response => displaySearchResults(response.items || []),
+                error: () => $('#bookList').html('<p>Error fetching search results.</p>')
             });
         }
+
+        $('#gridViewButton').click(() => $('#bookList').removeClass('list-view').addClass('grid-view'));
+        $('#listViewButton').click(() => $('#bookList').removeClass('grid-view').addClass('list-view'));
 
         function parseJwt(token) {
             const base64Url = token.split('.')[1];
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
             return JSON.parse(jsonPayload);
         }
 
         function signOut() {
             accessToken = null;
             document.getElementById('user-info').innerHTML = '<p>You have signed out.</p>';
-            $('#bookshelfList').empty();
-            $('#bookList').empty();
-            $('#pagination').empty();
-            $('#bookDetails').empty();
+            $('#bookshelfList, #bookList, #pagination, #bookDetails').empty();
         }
     </script>
 </body>
