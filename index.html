@@ -359,19 +359,21 @@
         return;
     }
 
-    $.ajax({
-        url: "https://www.googleapis.com/books/v1/mylibrary/bookshelves/7/volumes",
-        method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        success: function (data) {
-            console.log('Library Books:', data);
-            displayLibraryBooks(data.items || []);
-        },
-        error: function (xhr, status, error) {
-            console.error('Error fetching library books:', xhr.responseText || status || error);
-            $('#bookshelfList').html('<p>Error fetching library books. Please ensure permissions are granted.</p>');
-        }
-    });
+    console.log('Access Token:', accessToken);
+
+$.ajax({
+    url: "https://www.googleapis.com/books/v1/mylibrary/bookshelves/7/volumes",
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    success: function (data) {
+        console.log('Library Books:', data);
+        displayLibraryBooks(data.items || []);
+    },
+    error: function (xhr, status, error) {
+        console.error('Error fetching library books:', xhr.responseText || status || error);
+    }
+});
+
 }
 
 
