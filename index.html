@@ -358,53 +358,48 @@
 
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Extract access_token from the URL
     const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get("access_token"); // Get access_token if present
-    const code = urlParams.get("code"); // Get authorization code if present
-
-    // Check if access_token is present in the URL or localStorage
+    const accessToken = urlParams.get("access_token");
+    const code = urlParams.get("code");
     const storedAccessToken = localStorage.getItem("access_token");
 
     if (accessToken) {
         console.log("Access token received:", accessToken);
-        localStorage.setItem("access_token", accessToken); // Store the token
-        fetchUserLibrary(accessToken); // Fetch the user's library
-
-        // Show user info using the received token
         const userInfo = parseJwt(accessToken);
-        document.getElementById("user-info").innerHTML = `
-            <h3>Welcome, ${userInfo.name}</h3>
-            <p>Email: ${userInfo.email}</p>
-            <img src="${userInfo.picture}" alt="Profile Picture" />
-            <br>
-            <button onclick="signOut()">Sign out</button>
-        `;
-        document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
+        if (userInfo) {
+            localStorage.setItem("access_token", accessToken);
+            fetchUserLibrary(accessToken);
+            updateUserInfo(userInfo); // Update user UI
+        } else {
+            console.error("Invalid access token received.");
+            localStorage.removeItem("access_token");
+        }
+    } else if (storedAccessToken) {
+        console.log("Access token found in local storage.");
+        const userInfo = parseJwt(storedAccessToken);
+        if (userInfo) {
+            fetchUserLibrary(storedAccessToken);
+            updateUserInfo(userInfo); // Update user UI
+        } else {
+            console.error("Stored access token is invalid.");
+            localStorage.removeItem("access_token");
+        }
     } else if (code) {
         console.log("Authorization code received:", code);
         fetch(`${backendBaseUrl}/auth/token`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: code }), // Send the authorization code
+            body: JSON.stringify({ code: code }),
         })
             .then((response) => response.json())
             .then((data) => {
                 if (data.access_token) {
                     localStorage.setItem("access_token", data.access_token);
-                    console.log("Access Token:", data.access_token);
-                    fetchUserLibrary(data.access_token); // Fetch user library with token
-
-                    // Show user info using the token
                     const userInfo = parseJwt(data.access_token);
-                    document.getElementById("user-info").innerHTML = `
-                        <h3>Welcome, ${userInfo.name}</h3>
-                        <p>Email: ${userInfo.email}</p>
-                        <img src="${userInfo.picture}" alt="Profile Picture" />
-                        <br>
-                        <button onclick="signOut()">Sign out</button>
-                    `;
-                    document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
+                    if (userInfo) {
+                        fetchUserLibrary(data.access_token);
+                        updateUserInfo(userInfo); // Update user UI
+                    }
                 } else {
                     console.error("Token exchange failed:", data);
                 }
@@ -412,58 +407,54 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch((error) => {
                 console.error("Error during token exchange:", error);
             });
-    } else if (storedAccessToken) {
-        console.log("Access token found in local storage.");
-        fetchUserLibrary(storedAccessToken); // Fetch user library with stored token
-
-        // Show user info using the stored token
-        const userInfo = parseJwt(storedAccessToken);
-        document.getElementById("user-info").innerHTML = `
-            <h3>Welcome, ${userInfo.name}</h3>
-            <p>Email: ${userInfo.email}</p>
-            <img src="${userInfo.picture}" alt="Profile Picture" />
-            <br>
-            <button onclick="signOut()">Sign out</button>
-        `;
-        document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
     } else {
         console.log("No access token or authorization code found. User may need to sign in.");
     }
-
-    // Sign-In Button Logic
-    const signInButton = document.getElementById("signInButton");
-    if (signInButton) {
-        signInButton.addEventListener("click", function () {
-            const redirectUri = `${backendBaseUrl}/auth/callback`;
-            const authUrl = `${backendBaseUrl}/auth/google?redirectUri=${encodeURIComponent(redirectUri)}`;
-            window.location.href = authUrl; // Redirect to start OAuth flow
-        });
-    } else {
-        console.error("Sign-In button not found!");
-    }
 });
 
+// Helper to update the user info UI
+function updateUserInfo(userInfo) {
+    document.getElementById("user-info").innerHTML = `
+        <h3>Welcome, ${userInfo.name}</h3>
+        <p>Email: ${userInfo.email}</p>
+        <img src="${userInfo.picture}" alt="Profile Picture" />
+        <br>
+        <button onclick="signOut()">Sign out</button>
+    `;
+    document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
+}
 
-    function fetchUserLibrary(token = localStorage.getItem("access_token")) {
+
+
+function fetchUserLibrary(token = localStorage.getItem("access_token")) {
     if (!token) {
-        console.error('Access token is missing. Cannot fetch user library.');
+        console.error("Access token is missing. Cannot fetch user library.");
         return;
     }
 
     $.ajax({
-        url: `${backendBaseUrl}/api/books`, // Adjust endpoint as needed
+        url: `${backendBaseUrl}/api/books`,
         method: "GET",
-        headers: { Authorization: `Bearer ${token}` }, // Use token
+        headers: { Authorization: `Bearer ${token}` },
         success: function (data) {
             console.log("Library Books:", data);
             displayLibraryBooks(data.items || []);
         },
-        error: function (xhr) {
+        error: function (xhr, status, error) {
             console.error("Error fetching library books:", xhr.responseJSON || xhr.responseText);
+            if (xhr.status === 400) {
+                console.error("Bad Request: Check token validity or API parameters.");
+            } else if (xhr.status === 401) {
+                console.error("Unauthorized: Token might be expired or invalid.");
+                localStorage.removeItem("access_token"); // Clear invalid token
+                alert("Session expired. Please sign in again.");
+                location.reload();
+            }
             document.getElementById("bookshelfList").innerHTML = '<p>Error fetching library books.</p>';
-        }
+        },
     });
 }
+
 
 
         function renderBooks(templateId, containerId, books = []) {
@@ -584,11 +575,22 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function parseJwt(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            return JSON.parse(jsonPayload);
-        }
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+            atob(base64)
+                .split('')
+                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+        );
+        return JSON.parse(jsonPayload);
+    } catch (error) {
+        console.error('Error parsing JWT:', error);
+        return null; // Return null if token is invalid
+    }
+}
+
 
         function signOut() {
     // Clear access token and reset UI
