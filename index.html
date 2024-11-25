@@ -379,8 +379,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const signInButton = document.getElementById("signInButton");
     signInButton.addEventListener("click", function () {
         const redirectUri = "https://stanfordaniya.github.io/BookSearch2.0/";
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=profile email`;
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=profile email`;
         window.location.href = authUrl; // Redirect to Google Sign-In
+
     });
 });
 
