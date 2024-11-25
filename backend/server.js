@@ -33,6 +33,21 @@ app.get("/auth/google", (req, res) => {
     res.redirect(authUrl);
 });
 
+// Google OAuth callback route
+app.get("/auth/callback", (req, res) => {
+    const code = req.query.code;
+
+    if (!code) {
+        return res.status(400).json({ error: "Authorization code not found" });
+    }
+
+    res.send(`
+        <h1>Authorization Code Received</h1>
+        <p>Code: ${code}</p>
+        <p>Use this code to exchange for an access token via the /auth/token route.</p>
+    `);
+});
+
 // Exchange authorization code for access token
 app.post("/auth/token", async (req, res) => {
     try {
