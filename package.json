@@ -1,0 +1,22 @@
+{
+  "name": "milestonefourrr",
+  "version": "1.0.0",
+  "description": "This project is a virtual library web application that enables users to search for books, view details, and browse through multiple pages of search results. The application integrates the Google Books API to dynamically fetch and display book information, offering a seamless and user-friendly experience.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "debug": "^4.3.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "helmet": "^8.0.0",
+    "utils-merge": "^1.0.1"
+  }
+}

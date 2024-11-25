@@ -331,6 +331,7 @@
         
         let accessToken;
         const booksPerPage = 10;
+        const backendBaseUrl = "https://book-search-121e29a2ab08.herokuapp.com";
 
          
         // Google Sign-In handler
@@ -351,15 +352,14 @@
         // Add OAuth 2.0 Login Flow logic
         document.addEventListener('DOMContentLoaded', function () {
         // Attach click listener to sign-in button
-        const signInButton = document.getElementById('signInButton');
+        const signInButton = document.getElementById("signInButton");
         if (signInButton) {
-            signInButton.addEventListener('click', function () {
-                const clientId = '873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com';
-                const redirectUri = 'https://stanfordaniya.github.io/BookSearch2.0/';
-                const scope = 'https://www.googleapis.com/auth/books';
-                const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
-                window.location.href = authUrl; // Redirect to Google's consent page
-            });
+        signInButton.addEventListener("click", function () {
+
+            const redirectUri = "https://stanfordaniya.github.io/BookSearch2.0/";
+        const authUrl = `${backendBaseUrl}/auth/google?redirectUri=${encodeURIComponent(redirectUri)}`;
+        window.location.href = authUrl; // Redirect to backend OAuth handler
+         }); 
         } else {
             console.error('Sign-In button not found!');
         }
@@ -369,10 +369,28 @@
         const code = urlParams.get('code');
 
         if (code) {
-            console.log('Authorization code received:', code);
-            exchangeAuthorizationCodeForToken(code);
-        }
-    });
+    console.log("Authorization code received:", code);
+    fetch(`${backendBaseUrl}/auth/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.access_token) {
+                localStorage.setItem("access_token", data.access_token);
+                console.log("Access Token:", data.access_token);
+                fetchUserLibrary(data.access_token);
+            } else {
+                console.error("Token exchange failed:", data);
+            }
+        })
+        .catch((error) => {
+            console.error("Error during token exchange:", error);
+        });
+    }
+
+});
 
     function exchangeAuthorizationCodeForToken(code) {
         const clientId = '873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com';
