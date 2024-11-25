@@ -335,66 +335,114 @@
 
     // Google Sign-In handler
     function handleCredentialResponse(response) {
-        const responsePayload = parseJwt(response.credential);
+    const responsePayload = parseJwt(response.credential);
 
-        document.getElementById('user-info').innerHTML = `
-            <h3>Welcome, ${responsePayload.name}</h3>
-            <p>Email: ${responsePayload.email}</p>
-            <img src="${responsePayload.picture}" alt="Profile Picture" />
+    // Display user info
+    document.getElementById('user-info').innerHTML = `
+        <h3>Welcome, ${responsePayload.name}</h3>
+        <p>Email: ${responsePayload.email}</p>
+        <img src="${responsePayload.picture}" alt="Profile Picture" />
+        <br>
+        <button onclick="signOut()">Sign out</button>
+    `;
+
+    // Hide the sign-in button
+    document.getElementById('signInButton').style.display = 'none';
+
+    // Store the access token
+    accessToken = response.credential;
+    localStorage.setItem("access_token", accessToken);
+
+    fetchUserLibrary();
+}
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Extract access_token from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get("access_token"); // Get access_token if present
+    const code = urlParams.get("code"); // Get authorization code if present
+
+    // Check if access_token is present in the URL or localStorage
+    const storedAccessToken = localStorage.getItem("access_token");
+
+    if (accessToken) {
+        console.log("Access token received:", accessToken);
+        localStorage.setItem("access_token", accessToken); // Store the token
+        fetchUserLibrary(accessToken); // Fetch the user's library
+
+        // Show user info using the received token
+        const userInfo = parseJwt(accessToken);
+        document.getElementById("user-info").innerHTML = `
+            <h3>Welcome, ${userInfo.name}</h3>
+            <p>Email: ${userInfo.email}</p>
+            <img src="${userInfo.picture}" alt="Profile Picture" />
             <br>
             <button onclick="signOut()">Sign out</button>
         `;
+        document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
+    } else if (code) {
+        console.log("Authorization code received:", code);
+        fetch(`${backendBaseUrl}/auth/token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: code }), // Send the authorization code
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.access_token) {
+                    localStorage.setItem("access_token", data.access_token);
+                    console.log("Access Token:", data.access_token);
+                    fetchUserLibrary(data.access_token); // Fetch user library with token
 
-        accessToken = response.credential;
-        fetchUserLibrary();
+                    // Show user info using the token
+                    const userInfo = parseJwt(data.access_token);
+                    document.getElementById("user-info").innerHTML = `
+                        <h3>Welcome, ${userInfo.name}</h3>
+                        <p>Email: ${userInfo.email}</p>
+                        <img src="${userInfo.picture}" alt="Profile Picture" />
+                        <br>
+                        <button onclick="signOut()">Sign out</button>
+                    `;
+                    document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
+                } else {
+                    console.error("Token exchange failed:", data);
+                }
+            })
+            .catch((error) => {
+                console.error("Error during token exchange:", error);
+            });
+    } else if (storedAccessToken) {
+        console.log("Access token found in local storage.");
+        fetchUserLibrary(storedAccessToken); // Fetch user library with stored token
+
+        // Show user info using the stored token
+        const userInfo = parseJwt(storedAccessToken);
+        document.getElementById("user-info").innerHTML = `
+            <h3>Welcome, ${userInfo.name}</h3>
+            <p>Email: ${userInfo.email}</p>
+            <img src="${userInfo.picture}" alt="Profile Picture" />
+            <br>
+            <button onclick="signOut()">Sign out</button>
+        `;
+        document.getElementById("signInButton").style.display = "none"; // Hide sign-in button
+    } else {
+        console.log("No access token or authorization code found. User may need to sign in.");
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        // Extract access_token from the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const accessToken = urlParams.get("access_token"); // Get access_token if present
-        const code = urlParams.get("code"); // Get authorization code if present
+    // Sign-In Button Logic
+    const signInButton = document.getElementById("signInButton");
+    if (signInButton) {
+        signInButton.addEventListener("click", function () {
+            const redirectUri = `${backendBaseUrl}/auth/callback`;
+            const authUrl = `${backendBaseUrl}/auth/google?redirectUri=${encodeURIComponent(redirectUri)}`;
+            window.location.href = authUrl; // Redirect to start OAuth flow
+        });
+    } else {
+        console.error("Sign-In button not found!");
+    }
+});
 
-        if (accessToken) {
-            console.log("Access token received:", accessToken);
-            localStorage.setItem("access_token", accessToken); // Store the token
-            fetchUserLibrary(accessToken); // Fetch the user's library
-        } else if (code) {
-            console.log("Authorization code received:", code);
-            fetch(`${backendBaseUrl}/auth/token`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code: code }), // Fixed line
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.access_token) {
-                        localStorage.setItem("access_token", data.access_token);
-                        console.log("Access Token:", data.access_token);
-                        fetchUserLibrary(data.access_token); // Fetch user library with token
-                    } else {
-                        console.error("Token exchange failed:", data);
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error during token exchange:", error);
-                });
-        } else {
-            console.log("No access token or authorization code found. User may need to sign in.");
-        }
-
-        // Sign-In Button Logic
-        const signInButton = document.getElementById("signInButton");
-        if (signInButton) {
-            signInButton.addEventListener("click", function () {
-                const redirectUri = `${backendBaseUrl}/auth/callback`;
-                const authUrl = `${backendBaseUrl}/auth/google?redirectUri=${encodeURIComponent(redirectUri)}`;
-                window.location.href = authUrl; // Redirect to start OAuth flow
-            });
-        } else {
-            console.error("Sign-In button not found!");
-        }
-    });
 
     function fetchUserLibrary(token = localStorage.getItem("access_token")) {
     if (!token) {
@@ -543,11 +591,21 @@
         }
 
         function signOut() {
+    // Clear access token and reset UI
     accessToken = null;
+    localStorage.removeItem("access_token");
+
+    // Reset the user-info section
     document.getElementById('user-info').innerHTML = '<p>You have signed out.</p>';
+
+    // Show the sign-in button
+    document.getElementById('signInButton').style.display = 'block';
+
+    // Clear bookshelf and book list
     document.getElementById('bookshelfList').innerHTML = '';
     document.getElementById('bookList').innerHTML = '';
 }
+
 
     </script>
 </body>
