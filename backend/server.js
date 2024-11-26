@@ -42,6 +42,7 @@ app.get("/auth/callback", async (req, res) => {
     }
 
     try {
+        // Exchange the authorization code for an access token
         const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
             code,
             client_id: process.env.GOOGLE_CLIENT_ID,
@@ -49,14 +50,26 @@ app.get("/auth/callback", async (req, res) => {
             redirect_uri: process.env.REDIRECT_URI,
             grant_type: "authorization_code",
         });
+
+        const { access_token, id_token } = tokenResponse.data;
+
         console.log("Token Response:", tokenResponse.data); // Log the token data for debugging
-        return tokenResponse.data;
+
+        // Redirect to frontend with the access token (if necessary)
+        const redirectUrl = `https://stanfordaniya.github.io/BookSearch2.0/?access_token=${access_token}&id_token=${id_token}`;
+        return res.redirect(redirectUrl);
+
     } catch (error) {
-        console.error("Error exchanging token:", error.response?.data || error.message); // Log detailed error
-        throw error;
+        console.error("Error exchanging token:", error.response?.data || error.message);
+
+        // Send an error response back to the client
+        return res.status(500).json({
+            error: "Failed to exchange authorization code",
+            details: error.response?.data || error.message,
+        });
     }
-    
 });
+
 
 
 // Exchange authorization code for access token
