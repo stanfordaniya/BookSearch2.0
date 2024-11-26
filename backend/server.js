@@ -62,26 +62,27 @@ app.get("/auth/callback", async (req, res) => {
 // Exchange authorization code for access token
 app.post("/auth/token", async (req, res) => {
     try {
-        // Extract authorization code from the request body
         const { code } = req.body;
-
-        // Exchange the authorization code for an access token
-        const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
-            code, // Authorization code
-            client_id: process.env.GOOGLE_CLIENT_ID, // Google OAuth Client ID
-            client_secret: process.env.GOOGLE_CLIENT_SECRET, // Google OAuth Client Secret
-            redirect_uri: process.env.REDIRECT_URI, // Redirect URI (must match Google Cloud Console)
-            grant_type: "authorization_code", // OAuth 2.0 grant type
+        console.log("Received code:", code); // Debugging
+        const response = await axios.post("https://oauth2.googleapis.com/token", {
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: process.env.REDIRECT_URI,
+            grant_type: "authorization_code",
         });
-
-        // Send the token data back to the client
-        res.json(tokenResponse.data);
+        console.log("Token Response:", response.data); // Debugging
+        res.json(response.data);
     } catch (error) {
-        // Handle errors and send an appropriate response
         console.error("Error exchanging token:", error.response?.data || error.message);
-        res.status(500).json({ error: "Failed to exchange token" });
+        res.status(500).json({
+            error: "Failed to exchange token",
+            details: error.response?.data || error.message,
+        });
     }
 });
+
+
 
 
 // Proxy route to fetch books from Google Books API
