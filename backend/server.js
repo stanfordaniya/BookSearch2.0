@@ -21,6 +21,9 @@ app.use((req, res, next) => {
     next();
 });
 
+// Exclude favicon from triggering 404
+app.get("/favicon.ico", (req, res) => res.status(204));
+
 // Root route
 app.get("/", (req, res) => {
     res.send("Welcome to the Book Search API! The server is running.");
@@ -29,7 +32,10 @@ app.get("/", (req, res) => {
 // Google OAuth redirect route
 app.get("/auth/google", (req, res) => {
     const redirectUri = process.env.REDIRECT_URI;
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile`;
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${encodeURIComponent(
+        "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/books"
+    )}&access_type=offline&prompt=consent`;
+
     res.redirect(authUrl);
 });
 
@@ -50,12 +56,13 @@ app.get("/auth/callback", async (req, res) => {
             grant_type: "authorization_code",
         });
 
-        const { access_token, id_token } = tokenResponse.data;
+        const { access_token, refresh_token } = tokenResponse.data;
 
-        console.log("Token Response:", tokenResponse.data); // Debugging
+        console.log("Access Token:", access_token); // Avoid logging in production
+        console.log("Refresh Token:", refresh_token); // Avoid logging in production
 
         // Redirect to frontend with token
-        const redirectUrl = `https://stanfordaniya.github.io/BookSearch2.0/?access_token=${access_token}&id_token=${id_token}`;
+        const redirectUrl = `https://stanfordaniya.github.io/BookSearch2.0/?access_token=${access_token}`;
         res.redirect(redirectUrl);
     } catch (error) {
         console.error("Error exchanging token:", error.response?.data || error.message);
@@ -66,34 +73,33 @@ app.get("/auth/callback", async (req, res) => {
     }
 });
 
+// Token refresh route
+app.post("/auth/refresh", async (req, res) => {
+    const { refresh_token } = req.body;
 
+    if (!refresh_token) {
+        return res.status(400).json({ error: "Refresh token is required" });
+    }
 
-
-// Exchange authorization code for access token
-app.post("/auth/token", async (req, res) => {
     try {
-        const { code } = req.body;
-        console.log("Received code:", code); // Debugging
         const response = await axios.post("https://oauth2.googleapis.com/token", {
-            code,
             client_id: process.env.GOOGLE_CLIENT_ID,
             client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            redirect_uri: process.env.REDIRECT_URI,
-            grant_type: "authorization_code",
+            refresh_token: refresh_token,
+            grant_type: "refresh_token",
         });
-        console.log("Token Response:", response.data); // Debugging
-        res.json(response.data);
+
+        const { access_token } = response.data;
+
+        res.json({ access_token });
     } catch (error) {
-        console.error("Error exchanging token:", error.response?.data || error.message);
+        console.error("Error refreshing access token:", error.response?.data || error.message);
         res.status(500).json({
-            error: "Failed to exchange token",
+            error: "Failed to refresh access token",
             details: error.response?.data || error.message,
         });
     }
 });
-
-
-
 
 // Proxy route to fetch books from Google Books API
 app.get("/api/books", async (req, res) => {
@@ -107,14 +113,17 @@ app.get("/api/books", async (req, res) => {
         const response = await axios.get("https://www.googleapis.com/books/v1/volumes", {
             params: { q: query, startIndex, maxResults: 10 },
         });
+
+        if (!response.data.items) {
+            return res.status(404).json({ error: "No books found" });
+        }
+
         res.json(response.data);
     } catch (error) {
         console.error("Error fetching books:", error.response?.data || error.message);
         res.status(500).json({ error: "Failed to fetch books" });
     }
 });
-
-
 
 // Catch-all route for unhandled requests
 app.use((req, res) => {

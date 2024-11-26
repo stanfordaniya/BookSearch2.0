@@ -298,13 +298,13 @@
         <h1>Book Search</h1>
 
         <!-- Google Sign-In Button -->
-        <!-- Google Sign-In Button -->
-<div class="signin-container">
-    <!-- This is your custom-styled button -->
-    <div id="signInButton" class="custom-google-signin">
-        <span>Sign In with Google</span>
-    </div>
-</div>
+        <div class="signin-container">
+            <!-- Updated sign-in button -->
+            <button id="signInButton" class="custom-google-signin">
+                <img class="google-icon" src="https://developers.google.com/identity/images/g-logo.png" alt="Google Logo" />
+                <span>Sign In with Google</span>
+            </button>
+        </div>
 
 
         <!-- User Info after Sign-In -->
@@ -356,7 +356,6 @@
     </script>
 
     <!-- Include Google Identity Services, jQuery, and Mustache.js -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/3.0.0/mustache.min.js"></script>
 
@@ -385,7 +384,10 @@ function handleCredentialResponse(response) {
 }
 
 // Function to fetch user info and update login state
-function updateLoginState(token) {
+async function updateLoginState(token) {
+    token = await validateAndRefreshToken(token); // Validate and refresh token if needed
+    if (!token) return; // Exit if token is invalid or refresh fails
+
     const userInfoEndpoint = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json";
 
     // Fetch user info using the token
@@ -416,15 +418,15 @@ function displayUserInfo(userInfo) {
 
 
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     const urlParams = new URLSearchParams(window.location.search);
     const authorizationCode = urlParams.get("code");
     const storedToken = localStorage.getItem("access_token");
 
     if (storedToken) {
         console.log("Token found in localStorage. Updating login state.");
-        updateLoginState(storedToken); // Update UI with stored token
-        fetchUserLibrary(storedToken); // Fetch library using stored token
+        await updateLoginState(storedToken); // Validate and update UI
+        fetchUserLibrary(storedToken); // Fetch library using validated token
     } else if (authorizationCode) {
         console.log("Authorization code found:", authorizationCode);
         exchangeAuthorizationCodeForToken(authorizationCode)
@@ -448,15 +450,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Sign-in Button Handler
     document.getElementById("signInButton").addEventListener("click", function () {
-    const redirectUri = encodeURIComponent("https://book-search-121e29a2ab08.herokuapp.com/auth/callback");
-    const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}&access_type=offline&prompt=consent`;
+        const redirectUri = encodeURIComponent("https://book-search-121e29a2ab08.herokuapp.com/auth/callback");
+        const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}&access_type=offline&prompt=consent`;
 
-    console.log("Redirecting to:", authUrl);
-    window.location.href = authUrl;
+        console.log("Redirecting to:", authUrl);
+        window.location.href = authUrl;
+    });
 });
 
-});
 
 function isTokenExpired(token) {
     const payload = parseJwt(token);
@@ -692,7 +694,47 @@ function fetchUserLibrary(token) {
         return null; // Return null for invalid tokens
     }
 }
+async function validateAndRefreshToken(token) {
+    if (isTokenExpired(token)) {
+        const refreshToken = localStorage.getItem("refresh_token");
+        if (!refreshToken) {
+            signOut(); // No refresh token available, sign out the user
+            return null;
+        }
 
+        try {
+            const response = await fetch(`${backendBaseUrl}/auth/refresh`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const newAccessToken = data.access_token;
+
+            localStorage.setItem("access_token", newAccessToken);
+            return newAccessToken;
+        } catch (error) {
+            console.error("Error refreshing token:", error);
+            signOut(); // Token refresh failed, sign out the user
+            return null;
+        }
+    }
+    return token;
+}
+
+function isTokenExpired(token) {
+    const payload = parseJwt(token);
+    if (payload && payload.exp) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        return currentTime >= payload.exp;
+    }
+    return true;
+}
 
 
 function signOut() {
