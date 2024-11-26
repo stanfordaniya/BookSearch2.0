@@ -386,23 +386,31 @@ function displayUserInfo(userInfo) {
 document.addEventListener("DOMContentLoaded", function () {
     const urlParams = new URLSearchParams(window.location.search);
     const authorizationCode = urlParams.get("code");
+    const storedToken = localStorage.getItem("access_token");
 
-    if (authorizationCode) {
+    if (storedToken) {
+        console.log("Token found in localStorage. Updating login state.");
+        updateLoginState(storedToken); // Update UI with stored token
+        fetchUserLibrary(storedToken); // Fetch library using stored token
+    } else if (authorizationCode) {
         console.log("Authorization code found:", authorizationCode);
-        exchangeAuthorizationCodeForToken(authorizationCode) // Exchange code for token
+        exchangeAuthorizationCodeForToken(authorizationCode)
             .then((tokenData) => {
-                // Use the token data to indicate login state
                 const { access_token } = tokenData;
-                localStorage.setItem("access_token", access_token);
-                fetchUserLibrary(access_token); // Fetch user's library
-                updateLoginState(access_token); // Update UI
+                if (access_token) {
+                    localStorage.setItem("access_token", access_token);
+                    updateLoginState(access_token); // Update UI
+                    fetchUserLibrary(access_token); // Fetch user's library
+                } else {
+                    console.error("No access token received.");
+                }
             })
             .catch((error) => {
                 console.error("Error exchanging authorization code:", error);
-                alert("Failed to log in. Please try again.");
+                alert("Login failed. Please try again.");
             });
     } else {
-        console.log("No authorization code found. User may need to sign in.");
+        console.log("No token or authorization code found. Prompting user to log in.");
     }
 
     // Sign-in Button Handler
@@ -411,46 +419,103 @@ document.addEventListener("DOMContentLoaded", function () {
         const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile&access_type=offline&prompt=consent`;
 
+        console.log("Redirecting to Google Sign-In...");
         window.location.href = authUrl; // Redirect to Google Sign-In
     });
 });
 
-
+function isTokenExpired(token) {
+    const payload = parseJwt(token);
+    if (payload && payload.exp) {
+        const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+        return currentTime >= payload.exp;
+    }
+    return true; // Assume expired if no expiration info
+}
 
 function exchangeAuthorizationCodeForToken(code) {
-    fetch("https://book-search-121e29a2ab08.herokuapp.com/auth/token", {
+    return fetch("https://book-search-121e29a2ab08.herokuapp.com/auth/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
     })
-        .then((response) => response.json())
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then((data) => {
             if (data.access_token) {
-                localStorage.setItem("access_token", data.access_token);
                 console.log("Access Token received:", data.access_token);
-                // Redirect or fetch user library
+                return data;
             } else {
-                console.error("Token exchange failed:", data);
+                throw new Error("Token exchange failed. No access token received.");
             }
         })
-        .catch((error) => console.error("Error exchanging authorization code:", error));
+        .catch((error) => {
+            console.error("Error during token exchange:", error);
+            throw error;
+        });
 }
 
+function updateLoginState(token) {
+    const userInfoEndpoint = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json";
 
+    fetch(userInfoEndpoint, {
+        headers: { Authorization: `Bearer ${token}` },
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then((userInfo) => {
+            console.log("User Info:", userInfo);
+            displayUserInfo(userInfo);
+        })
+        .catch((error) => {
+            console.error("Error fetching user info:", error);
+        });
+}
+
+function displayUserInfo(userInfo) {
+    document.getElementById("user-info").innerHTML = `
+        <h3>Welcome, ${userInfo.name}</h3>
+        <p>Email: ${userInfo.email}</p>
+        <img src="${userInfo.picture}" alt="Profile Picture">
+        <br>
+        <button onclick="signOut()">Sign out</button>
+    `;
+    document.getElementById("signInButton").style.display = "none";
+}
 
 function fetchUserLibrary(token) {
     fetch("https://www.googleapis.com/books/v1/mylibrary/bookshelves", {
         headers: { Authorization: `Bearer ${token}` },
     })
-        .then((response) => response.json())
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then((data) => {
             console.log("User Library:", data);
             if (data.items) {
-                displayLibraryBooks(data.items); // Update UI
+                displayLibraryBooks(data.items);
+            } else {
+                console.warn("No books found in library.");
             }
         })
-        .catch((error) => console.error("Error fetching user library:", error));
+        .catch((error) => {
+            console.error("Error fetching user library:", error);
+            alert("Failed to fetch your library. Please try again later.");
+        });
 }
+
+
 
 
 
@@ -596,21 +661,21 @@ function fetchUserLibrary(token) {
 
 
 
-        function signOut() {
-    // Clear access token and reset UI
+function signOut() {
     accessToken = null;
     localStorage.removeItem("access_token");
 
     // Reset the user-info section
-    document.getElementById('user-info').innerHTML = '<p>You have signed out.</p>';
+    document.getElementById("user-info").innerHTML = '<p>You have signed out.</p>';
 
     // Show the sign-in button
-    document.getElementById('signInButton').style.display = 'block';
+    document.getElementById("signInButton").style.display = "block";
 
     // Clear bookshelf and book list
-    document.getElementById('bookshelfList').innerHTML = '';
-    document.getElementById('bookList').innerHTML = '';
+    document.getElementById("bookshelfList").innerHTML = '';
+    document.getElementById("bookList").innerHTML = '';
 }
+
 
 
     </script>
