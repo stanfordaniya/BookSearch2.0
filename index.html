@@ -330,24 +330,19 @@
     <script>
         
         let accessToken;
-    const booksPerPage = 10;
-    const backendBaseUrl = "https://book-search-121e29a2ab08.herokuapp.com";
+const booksPerPage = 10;
+const backendBaseUrl = "https://book-search-121e29a2ab08.herokuapp.com";
 
-    // Google Sign-In handler
-    function handleCredentialResponse(response) {
+// Google Sign-In handler
+function handleCredentialResponse(response) {
     const responsePayload = parseJwt(response.credential);
 
     // Display user info
-    document.getElementById('user-info').innerHTML = `
-        <h3>Welcome, ${responsePayload.name}</h3>
-        <p>Email: ${responsePayload.email}</p>
-        <img src="${responsePayload.picture}" alt="Profile Picture" />
-        <br>
-        <button onclick="signOut()">Sign out</button>
-    `;
-
-    // Hide the sign-in button
-    document.getElementById('signInButton').style.display = 'none';
+    displayUserInfo({
+        name: responsePayload.name,
+        email: responsePayload.email,
+        picture: responsePayload.picture,
+    });
 
     // Store the access token
     accessToken = response.credential;
@@ -356,23 +351,62 @@
     fetchUserLibrary();
 }
 
+// Function to fetch user info and update login state
+function updateLoginState(token) {
+    const userInfoEndpoint = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json";
+
+    // Fetch user info using the token
+    fetch(userInfoEndpoint, {
+        headers: { Authorization: `Bearer ${token}` },
+    })
+        .then((response) => response.json())
+        .then((userInfo) => {
+            console.log("User Info:", userInfo);
+            displayUserInfo(userInfo); // Update UI with user info
+        })
+        .catch((error) => {
+            console.error("Error fetching user info:", error);
+        });
+}
+
+// Reusable function to display user information
+function displayUserInfo(userInfo) {
+    document.getElementById("user-info").innerHTML = `
+        <h3>Welcome, ${userInfo.name}</h3>
+        <p>Email: ${userInfo.email}</p>
+        <img src="${userInfo.picture}" alt="Profile Picture">
+        <br>
+        <button onclick="signOut()">Sign out</button>
+    `;
+    document.getElementById("signInButton").style.display = "none";
+}
+
+
 
 document.addEventListener("DOMContentLoaded", function () {
     const urlParams = new URLSearchParams(window.location.search);
     const authorizationCode = urlParams.get("code");
 
-    console.log("Authorization Code:", authorizationCode);
-
     if (authorizationCode) {
         console.log("Authorization code found:", authorizationCode);
-        exchangeAuthorizationCodeForToken(authorizationCode); // Exchange code for token
+        exchangeAuthorizationCodeForToken(authorizationCode) // Exchange code for token
+            .then((tokenData) => {
+                // Use the token data to indicate login state
+                const { access_token } = tokenData;
+                localStorage.setItem("access_token", access_token);
+                fetchUserLibrary(access_token); // Fetch user's library
+                updateLoginState(access_token); // Update UI
+            })
+            .catch((error) => {
+                console.error("Error exchanging authorization code:", error);
+                alert("Failed to log in. Please try again.");
+            });
     } else {
         console.log("No authorization code found. User may need to sign in.");
     }
 
     // Sign-in Button Handler
-    const signInButton = document.getElementById("signInButton");
-    signInButton.addEventListener("click", function () {
+    document.getElementById("signInButton").addEventListener("click", function () {
         const redirectUri = "https://book-search-121e29a2ab08.herokuapp.com/auth/callback";
         const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile&access_type=offline&prompt=consent`;
@@ -380,6 +414,7 @@ document.addEventListener("DOMContentLoaded", function () {
         window.location.href = authUrl; // Redirect to Google Sign-In
     });
 });
+
 
 
 function exchangeAuthorizationCodeForToken(code) {
@@ -404,17 +439,19 @@ function exchangeAuthorizationCodeForToken(code) {
 
 
 function fetchUserLibrary(token) {
-    fetch("https://book-search-121e29a2ab08.herokuapp.com/api/books", {
-        method: "GET",
+    fetch("https://www.googleapis.com/books/v1/mylibrary/bookshelves", {
         headers: { Authorization: `Bearer ${token}` },
     })
         .then((response) => response.json())
         .then((data) => {
-            console.log("Library Books:", data);
-            displayLibraryBooks(data.items || []);
+            console.log("User Library:", data);
+            if (data.items) {
+                displayLibraryBooks(data.items); // Update UI
+            }
         })
-        .catch((error) => console.error("Error fetching library books:", error));
+        .catch((error) => console.error("Error fetching user library:", error));
 }
+
 
 
 

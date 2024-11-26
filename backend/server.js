@@ -34,6 +34,7 @@ app.get("/auth/google", (req, res) => {
 });
 
 // Google OAuth callback route
+// Google OAuth callback route
 app.get("/auth/callback", async (req, res) => {
     const code = req.query.code;
 
@@ -42,7 +43,6 @@ app.get("/auth/callback", async (req, res) => {
     }
 
     try {
-        // Exchange the authorization code for an access token
         const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
             code,
             client_id: process.env.GOOGLE_CLIENT_ID,
@@ -53,22 +53,20 @@ app.get("/auth/callback", async (req, res) => {
 
         const { access_token, id_token } = tokenResponse.data;
 
-        console.log("Token Response:", tokenResponse.data); // Log the token data for debugging
+        console.log("Token Response:", tokenResponse.data); // Debugging
 
-        // Redirect to frontend with the access token (if necessary)
+        // Redirect to frontend with token
         const redirectUrl = `https://stanfordaniya.github.io/BookSearch2.0/?access_token=${access_token}&id_token=${id_token}`;
-        return res.redirect(redirectUrl);
-
+        res.redirect(redirectUrl);
     } catch (error) {
         console.error("Error exchanging token:", error.response?.data || error.message);
-
-        // Send an error response back to the client
-        return res.status(500).json({
+        res.status(500).json({
             error: "Failed to exchange authorization code",
             details: error.response?.data || error.message,
         });
     }
 });
+
 
 
 
@@ -100,7 +98,7 @@ app.post("/auth/token", async (req, res) => {
 
 // Proxy route to fetch books from Google Books API
 app.get("/api/books", async (req, res) => {
-    const { query, startIndex = 0 } = req.query; // Default startIndex to 0 if not provided
+    const { query, startIndex = 0 } = req.query;
 
     if (!query) {
         return res.status(400).json({ error: "Query parameter is required" });
@@ -108,11 +106,7 @@ app.get("/api/books", async (req, res) => {
 
     try {
         const response = await axios.get("https://www.googleapis.com/books/v1/volumes", {
-            params: {
-                q: query,
-                startIndex: Number(startIndex),
-                maxResults: 10, // Adjust as needed
-            },
+            params: { q: query, startIndex, maxResults: 10 },
         });
         res.json(response.data);
     } catch (error) {
@@ -120,6 +114,7 @@ app.get("/api/books", async (req, res) => {
         res.status(500).json({ error: "Failed to fetch books" });
     }
 });
+
 
 
 // Catch-all route for unhandled requests
