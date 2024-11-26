@@ -421,6 +421,9 @@ function displayUserInfo(userInfo) {
 document.addEventListener("DOMContentLoaded", async function () {
     const urlParams = new URLSearchParams(window.location.search);
     const authorizationCode = urlParams.get("code");
+
+    console.log("Authorization Code:", authorizationCode); // Debugging
+
     const storedToken = localStorage.getItem("access_token");
 
     if (storedToken) {
