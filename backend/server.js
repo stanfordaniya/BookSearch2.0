@@ -58,11 +58,13 @@ app.get("/auth/callback", async (req, res) => {
 
         const { access_token, refresh_token } = tokenResponse.data;
 
-        console.log("Access Token:", access_token); // Avoid logging in production
-        console.log("Refresh Token:", refresh_token); // Avoid logging in production
+        if (process.env.NODE_ENV === "development") {
+            console.log("Access Token:", access_token); // Avoid logging in production
+            console.log("Refresh Token:", refresh_token); // Avoid logging in production
+        }
 
-        // Redirect to frontend with token
-        const redirectUrl = `https://stanfordaniya.github.io/BookSearch2.0/?access_token=${access_token}`;
+        // Redirect to frontend with tokens
+        const redirectUrl = `https://stanfordaniya.github.io/BookSearch2.0/?access_token=${access_token}&refresh_token=${refresh_token}`;
         res.redirect(redirectUrl);
     } catch (error) {
         console.error("Error exchanging token:", error.response?.data || error.message);
@@ -105,8 +107,9 @@ app.post("/auth/refresh", async (req, res) => {
 app.get("/api/books", async (req, res) => {
     const { query, startIndex = 0 } = req.query;
 
-    if (!query) {
-        return res.status(400).json({ error: "Query parameter is required" });
+    // Validate query parameter
+    if (!query || typeof query !== "string" || query.trim() === "") {
+        return res.status(400).json({ error: "Invalid query parameter" });
     }
 
     try {

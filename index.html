@@ -698,7 +698,8 @@ async function validateAndRefreshToken(token) {
     if (isTokenExpired(token)) {
         const refreshToken = localStorage.getItem("refresh_token");
         if (!refreshToken) {
-            signOut(); // No refresh token available, sign out the user
+            console.error("No refresh token available. Signing out.");
+            signOut();
             return null;
         }
 
@@ -716,16 +717,18 @@ async function validateAndRefreshToken(token) {
             const data = await response.json();
             const newAccessToken = data.access_token;
 
+            console.log("New access token:", newAccessToken);
             localStorage.setItem("access_token", newAccessToken);
             return newAccessToken;
         } catch (error) {
             console.error("Error refreshing token:", error);
-            signOut(); // Token refresh failed, sign out the user
+            signOut();
             return null;
         }
     }
     return token;
 }
+
 
 function isTokenExpired(token) {
     const payload = parseJwt(token);
