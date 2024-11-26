@@ -359,33 +359,28 @@
 
 document.addEventListener("DOMContentLoaded", function () {
     const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get("access_token");
     const authorizationCode = urlParams.get("code");
 
-    console.log("Access Token:", accessToken);
     console.log("Authorization Code:", authorizationCode);
 
-    if (accessToken) {
-        localStorage.setItem("access_token", accessToken); // Store access token
-        fetchUserLibrary(accessToken);
-    } else if (authorizationCode) {
+    if (authorizationCode) {
         console.log("Authorization code found:", authorizationCode);
         exchangeAuthorizationCodeForToken(authorizationCode); // Exchange code for token
     } else {
-        console.log("No access token or authorization code found. User may need to sign in.");
+        console.log("No authorization code found. User may need to sign in.");
     }
 
     // Sign-in Button Handler
     const signInButton = document.getElementById("signInButton");
     signInButton.addEventListener("click", function () {
-        const redirectUri = "https://stanfordaniya.github.io/BookSearch2.0/";
-const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
-const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=profile email`;
-window.location.href = authUrl; // Redirect to Google Sign-In
+        const redirectUri = "https://book-search-121e29a2ab08.herokuapp.com/auth/callback";
+        const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile&access_type=offline&prompt=consent`;
 
-
+        window.location.href = authUrl; // Redirect to Google Sign-In
     });
 });
+
 
 function exchangeAuthorizationCodeForToken(code) {
     fetch("https://book-search-121e29a2ab08.herokuapp.com/auth/token", {
@@ -398,13 +393,15 @@ function exchangeAuthorizationCodeForToken(code) {
             if (data.access_token) {
                 localStorage.setItem("access_token", data.access_token);
                 console.log("Access Token received:", data.access_token);
-                fetchUserLibrary(data.access_token);
+                // Redirect or fetch user library
             } else {
                 console.error("Token exchange failed:", data);
             }
         })
         .catch((error) => console.error("Error exchanging authorization code:", error));
 }
+
+
 
 function fetchUserLibrary(token) {
     fetch("https://book-search-121e29a2ab08.herokuapp.com/api/books", {
