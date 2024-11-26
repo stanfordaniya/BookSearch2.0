@@ -31,11 +31,39 @@
         }
 
         /* Sign-In Button Container */
-        .signin-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
+        /* Updated Sign-In Button Styling */
+.signin-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.custom-google-signin {
+    display: flex;
+    align-items: center;
+    background-color: #3498db;
+    color: white;
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.custom-google-signin:hover {
+    background-color: #2980b9;
+}
+
+.google-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
 
         /* Search Bar */
         .search-bar {
@@ -270,9 +298,14 @@
         <h1>Book Search</h1>
 
         <!-- Google Sign-In Button -->
-        <div class="signin-container">
-            <button id="signInButton">Sign In with Google </button>
-        </div>
+        <!-- Google Sign-In Button -->
+<div class="signin-container">
+    <!-- This is your custom-styled button -->
+    <div id="signInButton" class="custom-google-signin">
+        <span>Sign In with Google</span>
+    </div>
+</div>
+
 
         <!-- User Info after Sign-In -->
         <div id="user-info"></div>
@@ -415,13 +448,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Sign-in Button Handler
     document.getElementById("signInButton").addEventListener("click", function () {
-        const redirectUri = "https://book-search-121e29a2ab08.herokuapp.com/auth/callback";
-        const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile&access_type=offline&prompt=consent`;
+    const redirectUri = encodeURIComponent("https://book-search-121e29a2ab08.herokuapp.com/auth/callback");
+    const clientId = "873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com";
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${encodeURIComponent('https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile')}&access_type=offline&prompt=consent`;
 
-        console.log("Redirecting to Google Sign-In...");
-        window.location.href = authUrl; // Redirect to Google Sign-In
-    });
+    console.log("Redirecting to:", authUrl);
+    window.location.href = authUrl;
+});
+
 });
 
 function isTokenExpired(token) {

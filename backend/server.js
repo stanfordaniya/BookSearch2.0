@@ -34,7 +34,6 @@ app.get("/auth/google", (req, res) => {
 });
 
 // Google OAuth callback route
-// Google OAuth callback route
 app.get("/auth/callback", async (req, res) => {
     const code = req.query.code;
 
